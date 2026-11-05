@@ -87,7 +87,8 @@ def main(args):
     target = model_cfg['target_variable']
 
     # Use all features except the target variable
-    X = data.drop(columns=[target])
+    # `split` is metadata generated during feature engineering, not a model feature.
+    X = data.drop(columns=[target, 'split'], errors='ignore')
     y = data[target]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
