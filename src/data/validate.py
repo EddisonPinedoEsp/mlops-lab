@@ -1,46 +1,41 @@
+"""Gate de validación de datos: termina con código 1 si los datos no cumplen el contrato.
+
+Uso:
+    python src/data/validate.py --input data/processed/cleaned_house_data.csv
+"""
+
 import argparse
+import logging
+import sys
 from pathlib import Path
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from contract import check_contract  # noqa: E402
 
-REQUIRED_COLUMNS = {
-    "price",
-    "sqft",
-    "bedrooms",
-    "bathrooms",
-    "location",
-    "year_built",
-    "condition",
-}
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger("data-validation")
 
 
-def validate_data(input_file: str) -> None:
-    path = Path(input_file)
-    if not path.is_file():
-        raise FileNotFoundError(f"Data file does not exist: {input_file}")
+def main():
+    parser = argparse.ArgumentParser(description="Validate a house-price dataset against the data contract.")
+    parser.add_argument("--input", required=True, help="CSV to validate")
+    parser.add_argument("--no-target", action="store_true", help="the CSV has no price column (inference batch)")
+    args = parser.parse_args()
 
-    data = pd.read_csv(path)
-    missing_columns = REQUIRED_COLUMNS - set(data.columns)
-    if missing_columns:
-        raise ValueError(f"Missing required columns: {sorted(missing_columns)}")
-    if data.empty:
-        raise ValueError("The dataset is empty")
-    if data[list(REQUIRED_COLUMNS)].isna().any().any():
-        raise ValueError("Required columns contain missing values")
+    df = pd.read_csv(args.input)
+    violations = check_contract(df, require_target=not args.no_target)
 
-    numeric_columns = ["price", "sqft", "bedrooms", "bathrooms", "year_built"]
-    if not data[numeric_columns].apply(lambda column: pd.api.types.is_numeric_dtype(column)).all():
-        raise ValueError("Numeric columns contain non-numeric values")
-    if not data[numeric_columns].apply(lambda column: column.map(pd.api.types.is_number).all()).all():
-        raise ValueError("Numeric columns contain invalid values")
-    if (data[numeric_columns] < 0).any().any():
-        raise ValueError("Numeric columns contain negative values")
+    if not violations:
+        logger.info(f"✅ {args.input}: {len(df)} filas cumplen el data contract")
+        return 0
+
+    logger.error(f"❌ {args.input}: {len(violations)} violación(es) del data contract")
+    for v in violations:
+        logger.error(f"   [{v['check']}] {v['column']}: {v['rows']} fila(s) {v['detail']}")
+    return 1
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Validate the cleaned house dataset")
-    parser.add_argument("--input", required=True, help="Path to the CSV file")
-    args = parser.parse_args()
-    validate_data(args.input)
-    print(f"Data contract passed: {args.input}")
+    sys.exit(main())

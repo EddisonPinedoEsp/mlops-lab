@@ -1,12 +1,6 @@
 name: MLOps Pipeline
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       run_all:
@@ -21,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: "3.11.9"
 
@@ -55,10 +49,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: "3.11.9"
 
@@ -77,11 +71,3 @@ jobs:
         run: |
           mkdir -p models/trained
           python src/features/engineer.py --input data/processed/cleaned_house_data.csv --output data/processed/featured_house_data.csv --preprocessor models/trained/preprocessor.pkl
-
-      - name: Upload engineered data
-        uses: actions/upload-artifact@v4
-        with:
-          name: engineered-data
-          path: |
-            data/processed/featured_house_data.csv
-            models/trained/preprocessor.pkl
